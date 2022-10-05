@@ -28,8 +28,18 @@ type EtherScanBalanceMulti struct {
     } `json:"result"`
 }
 
+type EtherScanEthBlocKNumber struct {
+    JsonRpc string `json:"jsonrpc"`
+    Id string `json:"id"`
+    Result string `json:"result"`
+}
+
 func integerToString(value int) string {
     return strconv.Itoa(value)
+}
+
+func integer64ToString(value int64) string {
+    return strconv.FormatInt(value, 10)
 }
 
 func baseUnitsToEth(value string, precision int) string {
@@ -50,9 +60,9 @@ func formatValue(key string, meta string, value string) string {
     return result
 }
 
-func queryData() (string, error) {
+func queryData(path string) (string, error) {
     // Build URL
-    url := API_URL + "?module=account&action=balancemulti&address=" + accountIds + "&tag=latest&apikey=" + apiKey
+    url := API_URL + path
 
     // Perform HTTP request
     resp, httpErr := http.Get(url);
@@ -74,12 +84,12 @@ func queryData() (string, error) {
     return bodyString, nil;
 }
 
-func getTestData() (string, error) {
+func getTestData(file string) (string, error) {
     dir, err := os.Getwd()
     if err != nil {
         log.Fatal(err)
     }
-    body, err := ioutil.ReadFile(dir + "/test.json")
+    body, err := ioutil.ReadFile(dir + "/" + file)
     if err != nil {
         log.Fatal(err)
     }
@@ -92,20 +102,35 @@ func metrics(w http.ResponseWriter, r *http.Request) {
     up := 1
 
     var jsonString string
+    var jsonStringBlockNumber string
     var err error
+    var errBlockNumber error
+    var ethBlock int64
+
     if (testMode == "1") {
-        jsonString, err = getTestData()
+        jsonString, err = getTestData("test.json")
+        jsonStringBlockNumber, errBlockNumber = getTestData("test-blocknumber.json")
     } else {
-        jsonString, err = queryData()
+        jsonString, err = queryData("?module=account&action=balancemulti&address=" + accountIds + "&tag=latest&apikey=" + apiKey)
+        jsonStringBlockNumber, errBlockNumber = queryData("?module=proxy&action=eth_blockNumber&apikey=" + apiKey)
     }
+
     if err != nil {
         log.Print(err)
+        up = 0
+    }
+
+    if errBlockNumber != nil {
+        log.Print(errBlockNumber)
         up = 0
     }
 
     // Parse JSON
     jsonData := EtherScanBalanceMulti{}
     json.Unmarshal([]byte(jsonString), &jsonData)
+
+    jsonDataBlockNumber := EtherScanEthBlocKNumber{}
+    json.Unmarshal([]byte(jsonStringBlockNumber), &jsonDataBlockNumber)
 
     // Check response status
     if (jsonData.Status != "1") {
@@ -119,6 +144,9 @@ func metrics(w http.ResponseWriter, r *http.Request) {
     for _, Account := range jsonData.Result {
         io.WriteString(w, formatValue("etherscan_balance", "account=\"" + Account.Account + "\"", baseUnitsToEth(Account.Balance, 19)))
     }
+
+    ethBlock, err = strconv.ParseInt(strings.Replace(jsonDataBlockNumber.Result, "0x", "", -1), 16, 64)
+    io.WriteString(w, formatValue("etherscan_block_number", "", integer64ToString(ethBlock)))
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
