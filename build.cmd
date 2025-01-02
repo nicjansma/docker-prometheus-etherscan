@@ -1,0 +1,1 @@
+go build -v -o bin\app.exe src\app.go
