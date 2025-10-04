@@ -14,13 +14,13 @@ import (
 )
 
 const LISTEN_ADDRESS = ":9205"
-const API_URL_MAINNET = "https://api.etherscan.io/api"
-const API_URL_TESTNET = "https://api-{{TESTNET}}.etherscan.io/api"
+const API_URL_MAINNET = "https://api.etherscan.io/v2/api"
 
 var testMode string
 var accountIds string
 var apiKey string
 var testNet string
+var testNetId string
 
 type EtherScanBalanceMulti struct {
 	Status  string `json:"status"`
@@ -117,13 +117,12 @@ func metrics(w http.ResponseWriter, r *http.Request) {
 		jsonStringBlockNumber, errBlockNumber = getTestData("test-blocknumber.json")
 	} else {
 		// mainnet queries
-		jsonString, err = queryData(API_URL_MAINNET, "?module=account&action=balancemulti&address="+accountIds+"&tag=latest&apikey="+apiKey)
-		jsonStringBlockNumber, errBlockNumber = queryData(API_URL_MAINNET, "?module=proxy&action=eth_blockNumber&apikey="+apiKey)
+		jsonString, err = queryData(API_URL_MAINNET, "?chainid=1&module=account&action=balancemulti&address="+accountIds+"&tag=latest&apikey="+apiKey)
+		jsonStringBlockNumber, errBlockNumber = queryData(API_URL_MAINNET, "?chainid=1&module=proxy&action=eth_blockNumber&apikey="+apiKey)
 
 		// optional testnet queries
 		if testNet != "" {
-			var testNetUrl = strings.Replace(API_URL_TESTNET, "{{TESTNET}}", testNet, -1)
-			jsonStringBlockNumberTestnet, errBlockNumberTestnet = queryData(testNetUrl, "?module=proxy&action=eth_blockNumber&apikey="+apiKey)
+			jsonStringBlockNumberTestnet, errBlockNumberTestnet = queryData(API_URL_MAINNET, "?module=proxy&action=eth_blockNumber&apikey="+apiKey+"&chainid="+testNetId)
 		}
 	}
 
@@ -216,6 +215,7 @@ func main() {
 	apiKey = os.Getenv("API_KEY")
 
 	testNet = os.Getenv("TESTNET")
+	testNetId = os.Getenv("TESTNET_ID")
 
 	log.Print("Etherscan exporter listening on " + LISTEN_ADDRESS)
 	http.HandleFunc("/", index)
