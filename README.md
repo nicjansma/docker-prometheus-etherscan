@@ -8,4 +8,5 @@ Supports multiple accounts.
 
 Forked from https://github.com/kristophjunge/docker-prometheus-etherscan
 
-Adds support for fetching additional `TESTNET`s.
+* Adds support for fetching additional `TESTNET`s
+* Switched to v2 etherscan APIs
