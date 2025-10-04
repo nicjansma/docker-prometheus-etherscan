@@ -1,6 +1,6 @@
 FROM golang:alpine
 
-MAINTAINER Kristoph Junge <kristoph.junge@gmail.com>
+LABEL maintainer="Nic Jansma <nic@nicj.net>"
 
 WORKDIR /go
 
